@@ -15,23 +15,17 @@ const pool = new Pool({
 
 // ── DB INIT ───────────────────────────────────────────────────────
 async function initDB() {
-  // Detectar si la estructura es vieja y necesita recrearse
-  let needsReset = false;
-  try {
-    await pool.query("SELECT mesas_centro FROM facultades LIMIT 1");
-  } catch (e) {
-    needsReset = true;
-  }
+  // Siempre dropear y recrear para garantizar estructura limpia
+  // Las tablas de datos se recrean; usuarios se preserva
+  console.log("Iniciando migración...");
 
-  if (needsReset) {
-    console.log("Estructura vieja detectada — recreando tablas...");
-    await pool.query("DROP TABLE IF EXISTS mesas CASCADE");
-    await pool.query("DROP TABLE IF EXISTS log CASCADE");
-    await pool.query("DROP TABLE IF EXISTS listas CASCADE");
-    await pool.query("DROP TABLE IF EXISTS facultades CASCADE");
-    await pool.query("DROP TABLE IF EXISTS config CASCADE");
-    // NO dropeamos usuarios para no perder accesos ya creados
-  }
+  await pool.query("DROP TABLE IF EXISTS mesas CASCADE");
+  await pool.query("DROP TABLE IF EXISTS log CASCADE");
+  await pool.query("DROP TABLE IF EXISTS listas CASCADE");
+  await pool.query("DROP TABLE IF EXISTS facultades CASCADE");
+  await pool.query("DROP TABLE IF EXISTS config CASCADE");
+
+  console.log("Tablas dropeadas, recreando...");
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS usuarios (
@@ -45,7 +39,7 @@ async function initDB() {
   `);
 
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS facultades (
+    CREATE TABLE facultades (
       id            TEXT PRIMARY KEY,
       nombre        TEXT NOT NULL,
       mesas_centro  INTEGER DEFAULT 3,
@@ -56,7 +50,7 @@ async function initDB() {
   `);
 
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS listas (
+    CREATE TABLE listas (
       id          TEXT PRIMARY KEY,
       facultad_id TEXT NOT NULL REFERENCES facultades(id) ON DELETE CASCADE,
       nombre      TEXT NOT NULL,
@@ -66,14 +60,14 @@ async function initDB() {
   `);
 
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS config (
+    CREATE TABLE config (
       clave TEXT PRIMARY KEY,
       valor TEXT NOT NULL
     )
   `);
 
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS mesas (
+    CREATE TABLE mesas (
       id          SERIAL PRIMARY KEY,
       facultad_id TEXT NOT NULL,
       tipo        TEXT NOT NULL CHECK (tipo IN ('centro','consejo')),
@@ -90,7 +84,7 @@ async function initDB() {
   `);
 
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS log (
+    CREATE TABLE log (
       id       SERIAL PRIMARY KEY,
       facultad TEXT NOT NULL,
       tipo     TEXT NOT NULL,
@@ -119,13 +113,12 @@ async function initDB() {
     console.log("Admin creado con codigo: " + adminKey);
   }
 
-  // Seed facultades si tabla vacía
-  const { rows: facRows } = await pool.query("SELECT 1 FROM facultades LIMIT 1");
-  if (!facRows.length) {
-    await seedFacultades();
-  }
+  // Seed facultades
+  await seedFacultades();
 
-  console.log("DB lista");
+  // Una vez que todo está OK, reemplazamos initDB para que las próximas
+  // llamadas (si las hubiera) no vuelvan a dropear
+  console.log("DB lista y estructura verificada.");
 }
 
 // ── SEED FACULTADES UNR ───────────────────────────────────────────
@@ -200,7 +193,7 @@ app.post("/api/auth/login", async (req, res) => {
       [codigo.trim().toUpperCase()]
     );
     if (!rows.length) return res.status(403).json({ error: "Código incorrecto o sin acceso" });
-    res.json({ ok:true, rol:rows[0].rol, nombre: nombre||rows[0].nombre, codigo:rows[0].codigo });
+    res.json({ ok:true, rol:rows[0].rol, nombre:nombre||rows[0].nombre, codigo:rows[0].codigo });
   } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
 });
 
@@ -309,7 +302,7 @@ app.get("/api/resultados", async (req, res) => {
       if (!data[r.facultad_id]) data[r.facultad_id] = {};
       if (!data[r.facultad_id][r.tipo]) data[r.facultad_id][r.tipo] = {};
       data[r.facultad_id][r.tipo][r.lista_id] = {
-        votos: parseInt(r.votos)||0, blancos: parseInt(r.blancos)||0, nulos: parseInt(r.nulos)||0,
+        votos:parseInt(r.votos)||0, blancos:parseInt(r.blancos)||0, nulos:parseInt(r.nulos)||0,
       };
     }
     const mesasCargadas = {};
@@ -385,7 +378,7 @@ app.get("/api/admin/export/csv", async (req, res) => {
       FROM mesas m
       LEFT JOIN facultades f ON f.id=m.facultad_id
       LEFT JOIN listas l ON l.id=m.lista_id
-      ORDER BY f.nombre, m.tipo, m.dia, m.mesa, l.nombre
+      ORDER BY f.nombre,m.tipo,m.dia,m.mesa,l.nombre
     `);
     const lines = ["Facultad,Tipo,Dia,Mesa,Agrupacion,Votos,Blancos,Nulos,Cargado por,Fecha"];
     for (const r of rows) {
