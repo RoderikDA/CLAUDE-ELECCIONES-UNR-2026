@@ -308,6 +308,8 @@ app.get("/api/resultados", async (req, res) => {
     // Fiscal: filtrar por su facultad
     const facFilter = (user.rol === "fiscal" && user.facultad_id)
       ? "WHERE m.facultad_id = $1" : "";
+    const facFilterSimple = (user.rol === "fiscal" && user.facultad_id)
+      ? "WHERE facultad_id = $1" : "";
     const facParam  = (user.rol === "fiscal" && user.facultad_id)
       ? [user.facultad_id] : [];
 
@@ -321,7 +323,7 @@ app.get("/api/resultados", async (req, res) => {
 
     const { rows: cargadas } = await pool.query(`
       SELECT DISTINCT facultad_id, tipo, dia, mesa FROM mesas
-      ${facFilter}
+      ${facFilterSimple}
       ORDER BY facultad_id,tipo,dia,mesa
     `, facParam);
 
