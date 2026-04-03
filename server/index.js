@@ -10,7 +10,7 @@ const port = process.env.PORT || 3001;
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: ssl: process.env.DISABLE_SSL ? false : (process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false),
+  ssl: process.env.DISABLE_SSL ? false : (process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false),
 });
 
 // ── DB INIT ───────────────────────────────────────────────────────
