@@ -50,10 +50,10 @@ export async function getUsuarios(codigo) {
   return r.json();
 }
 
-export async function crearUsuario(codigo, nombre, rol) {
+export async function crearUsuario(codigo, nombre, rol, facultad_id) {
   const r = await fetch(`${BASE}/admin/usuarios`, {
     method: "POST", headers: headers(codigo),
-    body: JSON.stringify({ nombre, rol }),
+    body: JSON.stringify({ nombre, rol, facultad_id }),
   });
   const d = await r.json();
   if (!r.ok) throw new Error(d.error);
