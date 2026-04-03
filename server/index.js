@@ -86,6 +86,7 @@ async function initDB() {
   await pool.query(`ALTER TABLE mesas ADD COLUMN IF NOT EXISTS cargado_por TEXT`);
   await pool.query(`ALTER TABLE mesas ADD COLUMN IF NOT EXISTS blancos INTEGER DEFAULT 0`);
   await pool.query(`ALTER TABLE mesas ADD COLUMN IF NOT EXISTS nulos INTEGER DEFAULT 0`);
+  await pool.query(`ALTER TABLE mesas ALTER COLUMN facultad DROP NOT NULL`);
 
   // Admin por defecto
   const { rows } = await pool.query("SELECT 1 FROM usuarios WHERE rol='admin' LIMIT 1");
