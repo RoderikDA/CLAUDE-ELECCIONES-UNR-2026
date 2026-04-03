@@ -13,20 +13,23 @@ const pool = new Pool({
   ssl: process.env.DISABLE_SSL ? false : (process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false),
 });
 
-// ── DB INIT ───────────────────────────────────────────────────────
 async function initDB() {
   console.log("Verificando estructura DB...");
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS usuarios (
-      id         SERIAL PRIMARY KEY,
-      codigo     TEXT NOT NULL UNIQUE,
-      rol        TEXT NOT NULL CHECK (rol IN ('admin','fiscal','publico')),
-      nombre     TEXT NOT NULL,
-      activo     BOOLEAN DEFAULT TRUE,
-      created_at TIMESTAMPTZ DEFAULT NOW()
+      id          SERIAL PRIMARY KEY,
+      codigo      TEXT NOT NULL UNIQUE,
+      rol         TEXT NOT NULL CHECK (rol IN ('admin','fiscal','publico')),
+      nombre      TEXT NOT NULL,
+      facultad_id TEXT DEFAULT NULL,
+      activo      BOOLEAN DEFAULT TRUE,
+      created_at  TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+
+  // Migración: agregar facultad_id si no existe
+  await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS facultad_id TEXT DEFAULT NULL`);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS facultades (
@@ -92,7 +95,6 @@ async function initDB() {
     ON CONFLICT DO NOTHING
   `);
 
-  // Admin por defecto
   const { rows: admins } = await pool.query("SELECT 1 FROM usuarios WHERE rol='admin' LIMIT 1");
   if (!admins.length) {
     const adminKey = (process.env.ADMIN_KEY || "ADMIN2026").toUpperCase();
@@ -103,13 +105,12 @@ async function initDB() {
     console.log("Admin creado con codigo: " + adminKey);
   }
 
-  // Seed facultades
-  await seedFacultades();
+  const { rows: facRows } = await pool.query("SELECT 1 FROM facultades LIMIT 1");
+  if (!facRows.length) await seedFacultades();
 
   console.log("DB lista.");
 }
 
-// ── SEED FACULTADES UNR ───────────────────────────────────────────
 async function seedFacultades() {
   const facultades = [
     { id:"fcpolit",     nombre:"FCPolit",      mc:3,  mcd:3,  orden:1,
@@ -152,7 +153,6 @@ async function seedFacultades() {
   console.log("Facultades UNR cargadas");
 }
 
-// ── MIDDLEWARE ────────────────────────────────────────────────────
 app.use(cors());
 app.use(express.json());
 if (process.env.NODE_ENV === "production") {
@@ -181,7 +181,13 @@ app.post("/api/auth/login", async (req, res) => {
       [codigo.trim().toUpperCase()]
     );
     if (!rows.length) return res.status(403).json({ error: "Código incorrecto o sin acceso" });
-    res.json({ ok:true, rol:rows[0].rol, nombre:nombre||rows[0].nombre, codigo:rows[0].codigo });
+    res.json({
+      ok: true,
+      rol: rows[0].rol,
+      nombre: nombre || rows[0].nombre,
+      codigo: rows[0].codigo,
+      facultad_id: rows[0].facultad_id || null,
+    });
   } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
 });
 
@@ -189,7 +195,17 @@ app.post("/api/auth/login", async (req, res) => {
 app.get("/api/facultades", async (req, res) => {
   try {
     if (!await requireAuth(req, res, null)) return;
-    const { rows: facs }   = await pool.query("SELECT * FROM facultades WHERE activa=TRUE ORDER BY orden,nombre");
+    const user = req.user;
+
+    // Fiscal: solo su facultad
+    let facQuery = "SELECT * FROM facultades WHERE activa=TRUE ORDER BY orden,nombre";
+    let facParams = [];
+    if (user.rol === "fiscal" && user.facultad_id) {
+      facQuery = "SELECT * FROM facultades WHERE id=$1 AND activa=TRUE";
+      facParams = [user.facultad_id];
+    }
+
+    const { rows: facs }   = await pool.query(facQuery, facParams);
     const { rows: listas } = await pool.query("SELECT * FROM listas ORDER BY orden,nombre");
     const { rows: cfg }    = await pool.query("SELECT * FROM config");
     const config = Object.fromEntries(cfg.map(r => [r.clave, r.valor]));
@@ -240,7 +256,13 @@ app.post("/api/admin/config", async (req, res) => {
 app.get("/api/admin/usuarios", async (req, res) => {
   try {
     if (!await requireAuth(req, res, ["admin"])) return;
-    const { rows } = await pool.query("SELECT id,codigo,rol,nombre,activo,created_at FROM usuarios ORDER BY created_at DESC");
+    const { rows } = await pool.query(`
+      SELECT u.id, u.codigo, u.rol, u.nombre, u.facultad_id, u.activo, u.created_at,
+             f.nombre as facultad_nombre
+      FROM usuarios u
+      LEFT JOIN facultades f ON f.id = u.facultad_id
+      ORDER BY u.created_at DESC
+    `);
     res.json(rows);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -248,10 +270,14 @@ app.get("/api/admin/usuarios", async (req, res) => {
 app.post("/api/admin/usuarios", async (req, res) => {
   try {
     if (!await requireAuth(req, res, ["admin"])) return;
-    const { nombre, rol } = req.body;
+    const { nombre, rol, facultad_id } = req.body;
     if (!nombre||!rol) return res.status(400).json({ error: "Faltan datos" });
+    if (rol === "fiscal" && !facultad_id) return res.status(400).json({ error: "El fiscal necesita una facultad" });
     const codigo = rol.toUpperCase().slice(0,3)+"-"+crypto.randomBytes(3).toString("hex").toUpperCase();
-    await pool.query("INSERT INTO usuarios (codigo,rol,nombre) VALUES ($1,$2,$3)", [codigo,rol,nombre]);
+    await pool.query(
+      "INSERT INTO usuarios (codigo,rol,nombre,facultad_id) VALUES ($1,$2,$3,$4)",
+      [codigo, rol, nombre, facultad_id || null]
+    );
     res.json({ ok:true, codigo });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -259,7 +285,8 @@ app.post("/api/admin/usuarios", async (req, res) => {
 app.patch("/api/admin/usuarios/:id", async (req, res) => {
   try {
     if (!await requireAuth(req, res, ["admin"])) return;
-    await pool.query("UPDATE usuarios SET activo=$1 WHERE id=$2", [req.body.activo, req.params.id]);
+    const { activo } = req.body;
+    await pool.query("UPDATE usuarios SET activo=$1 WHERE id=$2", [activo, req.params.id]);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -276,15 +303,28 @@ app.delete("/api/admin/usuarios/:id", async (req, res) => {
 app.get("/api/resultados", async (req, res) => {
   try {
     if (!await requireAuth(req, res, null)) return;
+    const user = req.user;
+
+    // Fiscal: filtrar por su facultad
+    const facFilter = (user.rol === "fiscal" && user.facultad_id)
+      ? "WHERE m.facultad_id = $1" : "";
+    const facParam  = (user.rol === "fiscal" && user.facultad_id)
+      ? [user.facultad_id] : [];
+
     const { rows: totales } = await pool.query(`
       SELECT m.facultad_id, m.tipo, m.lista_id, l.nombre as lista,
              SUM(m.votos) AS votos, SUM(m.blancos) AS blancos, SUM(m.nulos) AS nulos
       FROM mesas m LEFT JOIN listas l ON l.id=m.lista_id
+      ${facFilter}
       GROUP BY m.facultad_id, m.tipo, m.lista_id, l.nombre
-    `);
-    const { rows: cargadas } = await pool.query(
-      "SELECT DISTINCT facultad_id, tipo, dia, mesa FROM mesas ORDER BY facultad_id,tipo,dia,mesa"
-    );
+    `, facParam);
+
+    const { rows: cargadas } = await pool.query(`
+      SELECT DISTINCT facultad_id, tipo, dia, mesa FROM mesas
+      ${facFilter}
+      ORDER BY facultad_id,tipo,dia,mesa
+    `, facParam);
+
     const data = {};
     for (const r of totales) {
       if (!data[r.facultad_id]) data[r.facultad_id] = {};
@@ -308,6 +348,12 @@ app.post("/api/resultados", async (req, res) => {
     if (!await requireAuth(req, res, ["admin","fiscal"])) return;
     const { facultad_id, tipo, dia, mesa, listas, blancos, nulos, usuario } = req.body;
     if (!facultad_id||!tipo||!dia||!mesa||!listas) return res.status(400).json({ error: "Datos incompletos" });
+
+    // Fiscal solo puede cargar su facultad
+    if (req.user.rol === "fiscal" && req.user.facultad_id && req.user.facultad_id !== facultad_id) {
+      return res.status(403).json({ error: "Solo podés cargar tu facultad asignada" });
+    }
+
     const { rows: fRows } = await pool.query("SELECT nombre FROM facultades WHERE id=$1", [facultad_id]);
     const facultadNombre = fRows[0]?.nombre || facultad_id;
     const client = await pool.connect();
@@ -337,6 +383,18 @@ app.post("/api/resultados", async (req, res) => {
 app.get("/api/log", async (req, res) => {
   try {
     if (!await requireAuth(req, res, null)) return;
+    const user = req.user;
+
+    // Fiscal: solo log de su facultad
+    if (user.rol === "fiscal" && user.facultad_id) {
+      const { rows: fRows } = await pool.query("SELECT nombre FROM facultades WHERE id=$1", [user.facultad_id]);
+      const fNombre = fRows[0]?.nombre;
+      const { rows } = await pool.query(
+        "SELECT * FROM log WHERE facultad=$1 ORDER BY ts DESC LIMIT 300", [fNombre]
+      );
+      return res.json(rows);
+    }
+
     const { rows } = await pool.query("SELECT * FROM log ORDER BY ts DESC LIMIT 300");
     res.json(rows);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -385,14 +443,12 @@ app.get("/api/admin/export/csv", async (req, res) => {
   } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
 });
 
-// ── FALLBACK ──────────────────────────────────────────────────────
 if (process.env.NODE_ENV === "production") {
   app.get("*", (req, res) => {
     res.sendFile(path.join(__dirname, "../client/dist/index.html"));
   });
 }
 
-// ── START ─────────────────────────────────────────────────────────
 initDB().then(() => {
   app.listen(port, () => console.log("Servidor en puerto " + port));
 }).catch(e => { console.error("Error iniciando DB:", e); process.exit(1); });
