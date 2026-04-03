@@ -80,6 +80,10 @@ async function initDB() {
     ON CONFLICT DO NOTHING
   `);
 
+  // Migraciones — agregar columnas si no existen
+  await pool.query(`ALTER TABLE facultades ADD COLUMN IF NOT EXISTS mesas_centro INTEGER DEFAULT 3`);
+  await pool.query(`ALTER TABLE facultades ADD COLUMN IF NOT EXISTS mesas_consejo INTEGER DEFAULT 3`);
+
   // Admin por defecto
   const { rows } = await pool.query("SELECT 1 FROM usuarios WHERE rol='admin' LIMIT 1");
   if (!rows.length) {
