@@ -55,7 +55,7 @@ export default function App() {
         <div style={{ maxWidth: 600, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
           <div>
             <div style={{ fontSize: 10, letterSpacing: 3, opacity: .4, marginBottom: 3, textTransform: "uppercase" }}>UNR · Escrutinio Digital</div>
-            <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: -.5 }}>Elecciones Estudiantiles 2025</div>
+            <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: -.5 }}>Elecciones Estudiantiles 2026</div>
           </div>
           <div style={{ textAlign: "right" }}>
             <button onClick={fetchData} style={{ background: "none", border: "1px solid #ffffff30", color: "#fff", borderRadius: 8, padding: "5px 12px", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
