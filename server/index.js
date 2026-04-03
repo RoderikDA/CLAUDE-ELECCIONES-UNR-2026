@@ -15,17 +15,7 @@ const pool = new Pool({
 
 // ── DB INIT ───────────────────────────────────────────────────────
 async function initDB() {
-  // Siempre dropear y recrear para garantizar estructura limpia
-  // Las tablas de datos se recrean; usuarios se preserva
-  console.log("Iniciando migración...");
-
-  await pool.query("DROP TABLE IF EXISTS mesas CASCADE");
-  await pool.query("DROP TABLE IF EXISTS log CASCADE");
-  await pool.query("DROP TABLE IF EXISTS listas CASCADE");
-  await pool.query("DROP TABLE IF EXISTS facultades CASCADE");
-  await pool.query("DROP TABLE IF EXISTS config CASCADE");
-
-  console.log("Tablas dropeadas, recreando...");
+  console.log("Verificando estructura DB...");
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS usuarios (
@@ -39,7 +29,7 @@ async function initDB() {
   `);
 
   await pool.query(`
-    CREATE TABLE facultades (
+    CREATE TABLE IF NOT EXISTS facultades (
       id            TEXT PRIMARY KEY,
       nombre        TEXT NOT NULL,
       mesas_centro  INTEGER DEFAULT 3,
@@ -50,7 +40,7 @@ async function initDB() {
   `);
 
   await pool.query(`
-    CREATE TABLE listas (
+    CREATE TABLE IF NOT EXISTS listas (
       id          TEXT PRIMARY KEY,
       facultad_id TEXT NOT NULL REFERENCES facultades(id) ON DELETE CASCADE,
       nombre      TEXT NOT NULL,
@@ -60,14 +50,14 @@ async function initDB() {
   `);
 
   await pool.query(`
-    CREATE TABLE config (
+    CREATE TABLE IF NOT EXISTS config (
       clave TEXT PRIMARY KEY,
       valor TEXT NOT NULL
     )
   `);
 
   await pool.query(`
-    CREATE TABLE mesas (
+    CREATE TABLE IF NOT EXISTS mesas (
       id          SERIAL PRIMARY KEY,
       facultad_id TEXT NOT NULL,
       tipo        TEXT NOT NULL CHECK (tipo IN ('centro','consejo')),
@@ -84,7 +74,7 @@ async function initDB() {
   `);
 
   await pool.query(`
-    CREATE TABLE log (
+    CREATE TABLE IF NOT EXISTS log (
       id       SERIAL PRIMARY KEY,
       facultad TEXT NOT NULL,
       tipo     TEXT NOT NULL,
@@ -116,9 +106,7 @@ async function initDB() {
   // Seed facultades
   await seedFacultades();
 
-  // Una vez que todo está OK, reemplazamos initDB para que las próximas
-  // llamadas (si las hubiera) no vuelvan a dropear
-  console.log("DB lista y estructura verificada.");
+  console.log("DB lista.");
 }
 
 // ── SEED FACULTADES UNR ───────────────────────────────────────────
