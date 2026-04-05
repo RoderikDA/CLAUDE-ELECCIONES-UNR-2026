@@ -97,3 +97,9 @@ export async function borrarResultados(codigo) {
 export function exportURL(codigo) {
   return `${BASE}/admin/export/csv?codigo=${encodeURIComponent(codigo)}`;
 }
+
+export async function getVotosPorDia(codigo) {
+  const r = await fetch("/api/votos-por-dia", { headers: { "Content-Type": "application/json", "x-codigo": codigo || "" } });
+  if (!r.ok) throw new Error("Error cargando votos por día");
+  return r.json();
+}
