@@ -4,7 +4,7 @@ import { postResultados } from "./api.js";
 
 const DIAS = [1, 2, 3];
 
-export default function PanelFiscal({ user, facultades, bancas, results, mesasCargadas, onSaved }) {
+export default function PanelFiscal({ user, facultades, consejeros, results, mesasCargadas, onSaved }) {
   const [step, setStep]             = useState("facultad");
   const [facultadId, setFacultadId] = useState(null);
   const [tipo, setTipo]             = useState(null);
@@ -147,7 +147,7 @@ export default function PanelFiscal({ user, facultades, bancas, results, mesasCa
                   <div style={{ flex:1 }}>
                     <div style={{ fontWeight:700, fontSize:15, color:"#1a1a2e" }}>{op.label}</div>
                     <div style={{ fontSize:12, color:"#aaa", marginTop:3 }}>
-                      {op.mesas} mesas · 3 días · {op.id==="consejo"?`D'Hondt ${bancas} bancas`:"Directa"}
+                      {op.mesas} mesas · 3 días · {op.id==="consejo"?`D'Hondt ${consejeros} consejeros`:"Directa"}
                     </div>
                   </div>
                   {cargadas > 0 && <span style={{ fontSize:11, color:op.color, fontWeight:700, background:op.color+"15", padding:"3px 10px", borderRadius:6 }}>{cargadas}/{total}</span>}
