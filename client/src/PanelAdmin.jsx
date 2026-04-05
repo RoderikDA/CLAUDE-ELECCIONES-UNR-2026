@@ -4,7 +4,7 @@ import { getUsuarios, crearUsuario, toggleUsuario, eliminarUsuario, guardarConfi
 
 const COLORS = ["#e74c3c","#2980b9","#27ae60","#8e44ad","#e67e22","#1abc9c","#c0392b","#16a085","#f39c12","#2c3e50"];
 
-export default function PanelAdmin({ user, facultadesIniciales, bancasIniciales, exportURL, onConfigSaved }) {
+export default function PanelAdmin({ user, facultadesIniciales, consejerosIniciales, exportURL, onConfigSaved }) {
   const [seccion, setSeccion] = useState("usuarios");
   return (
     <div style={{ maxWidth:600, margin:"0 auto" }}>
@@ -19,7 +19,7 @@ export default function PanelAdmin({ user, facultadesIniciales, bancasIniciales,
         ))}
       </div>
       {seccion==="usuarios" && <GestionUsuarios user={user} facultades={facultadesIniciales} />}
-      {seccion==="config"   && <GestionConfig user={user} facultadesIniciales={facultadesIniciales} bancasIniciales={bancasIniciales} onSaved={onConfigSaved} />}
+      {seccion==="config"   && <GestionConfig user={user} facultadesIniciales={facultadesIniciales} consejerosIniciales={consejerosIniciales} onSaved={onConfigSaved} />}
       {seccion==="datos"    && <GestionDatos user={user} exportURL={exportURL} />}
     </div>
   );
@@ -165,9 +165,9 @@ function GestionUsuarios({ user, facultades }) {
   );
 }
 
-function GestionConfig({ user, facultadesIniciales, bancasIniciales, onSaved }) {
+function GestionConfig({ user, facultadesIniciales, consejerosIniciales, onSaved }) {
   const [draft,  setDraft]  = useState(()=>JSON.parse(JSON.stringify(facultadesIniciales||[])));
-  const [bancas, setBancas] = useState(bancasIniciales||8);
+  const [consejeros, setBancas] = useState(consejerosIniciales||8);
   const [saving, setSaving] = useState(false);
   const [toast,  setToast]  = useState(null);
 
@@ -182,7 +182,7 @@ function GestionConfig({ user, facultadesIniciales, bancasIniciales, onSaved }) 
 
   async function guardar(){
     setSaving(true);
-    try { await guardarConfig(user.codigo,{facultades:draft,bancas}); showToast("✓ Configuración guardada"); onSaved(); }
+    try { await guardarConfig(user.codigo,{facultades:draft,consejeros}); showToast("✓ Configuración guardada"); onSaved(); }
     catch(e){ showToast("❌ "+e.message,false); }
     finally{ setSaving(false); }
   }
@@ -194,8 +194,8 @@ function GestionConfig({ user, facultadesIniciales, bancasIniciales, onSaved }) 
         ⚠️ Los cambios en nombres no borran resultados ya cargados.
       </div>
       <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:18,background:"#fff",borderRadius:12,padding:"14px 16px",boxShadow:"0 1px 8px #0001" }}>
-        <span style={{ fontSize:14,fontWeight:700,color:"#1a1a2e",flex:1 }}>Bancas — Consejo Directivo</span>
-        <input type="number" min="1" max="50" value={bancas} onChange={e=>setBancas(parseInt(e.target.value)||8)}
+        <span style={{ fontSize:14,fontWeight:700,color:"#1a1a2e",flex:1 }}>Consejeros — Consejo Directivo</span>
+        <input type="number" min="1" max="50" value={consejeros} onChange={e=>setBancas(parseInt(e.target.value)||8)}
           style={{ width:64,padding:"7px 10px",border:"2px solid #eee",borderRadius:8,fontSize:16,fontWeight:800,fontFamily:"inherit",outline:"none",textAlign:"center",color:"#8e44ad" }} />
       </div>
       <div style={{ display:"flex",flexDirection:"column",gap:14,marginBottom:18 }}>
