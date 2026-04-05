@@ -11,6 +11,7 @@ import { getFacultades, getResultados, getLog, exportURL as getExportURL } from 
 const TABS_BY_ROL = {
   admin:   [
     { id:"resultados", icon:"📊", label:"Resultados" },
+    { id:"analisis",   icon:"🔍", label:"Análisis"   },
     { id:"fiscal",     icon:"📥", label:"Cargar"     },
     { id:"log",        icon:"🕑", label:"Historial"  },
     { id:"admin",      icon:"⚙️", label:"Admin"      },
@@ -22,6 +23,7 @@ const TABS_BY_ROL = {
   ],
   publico: [
     { id:"resultados", icon:"📊", label:"Resultados" },
+    { id:"analisis",   icon:"🔍", label:"Análisis"   },
   ],
 };
 
@@ -128,6 +130,7 @@ export default function App() {
         {tab === "fiscal"     && <PanelFiscal user={user} facultades={facultades} bancas={bancas} results={results} mesasCargadas={mesasCargadas} onSaved={fetchAll} />}
         {tab === "resultados" && <PanelResultados user={user} facultades={facultades} bancas={bancas} results={results} mesasCargadas={mesasCargadas} exportURL={exportUrl} />}
         {tab === "log"        && <PanelLog log={log} />}
+        {tab === "analisis"   && <PanelAnalisis facultades={facultades} results={results} mesasCargadas={mesasCargadas} consejeros={bancas} />}
         {tab === "admin"      && <PanelAdmin user={user} facultadesIniciales={facultades} bancasIniciales={bancas} exportURL={exportUrl} onConfigSaved={fetchAll} />}
       </div>
 
