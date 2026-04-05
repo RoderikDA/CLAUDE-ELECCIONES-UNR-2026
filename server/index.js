@@ -445,6 +445,47 @@ app.get("/api/admin/export/csv", async (req, res) => {
   } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
 });
 
+
+// ── VOTOS POR DÍA ─────────────────────────────────────────────────
+app.get("/api/votos-por-dia", async (req, res) => {
+  try {
+    if (!await requireAuth(req, res, null)) return;
+    const user = req.user;
+
+    const facFilter = (user.rol === "fiscal" && user.facultad_id)
+      ? "AND m.facultad_id = $1" : "";
+    const facParam  = (user.rol === "fiscal" && user.facultad_id)
+      ? [user.facultad_id] : [];
+
+    const { rows } = await pool.query(`
+      SELECT m.facultad_id, m.tipo, m.dia, m.lista_id,
+             l.nombre as lista,
+             SUM(m.votos) AS votos,
+             SUM(m.blancos) AS blancos,
+             SUM(m.nulos) AS nulos
+      FROM mesas m
+      LEFT JOIN listas l ON l.id = m.lista_id
+      WHERE 1=1 ${facFilter}
+      GROUP BY m.facultad_id, m.tipo, m.dia, m.lista_id, l.nombre
+      ORDER BY m.facultad_id, m.tipo, m.dia, m.lista_id
+    `, facParam);
+
+    // Reshape: { fid: { tipo: { dia: { lista_id: { votos, blancos, nulos } } } } }
+    const data = {};
+    for (const r of rows) {
+      if (!data[r.facultad_id]) data[r.facultad_id] = {};
+      if (!data[r.facultad_id][r.tipo]) data[r.facultad_id][r.tipo] = {};
+      if (!data[r.facultad_id][r.tipo][r.dia]) data[r.facultad_id][r.tipo][r.dia] = {};
+      data[r.facultad_id][r.tipo][r.dia][r.lista_id] = {
+        votos:   parseInt(r.votos)   || 0,
+        blancos: parseInt(r.blancos) || 0,
+        nulos:   parseInt(r.nulos)   || 0,
+      };
+    }
+    res.json(data);
+  } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
+});
+
 if (process.env.NODE_ENV === "production") {
   app.get("*", (req, res) => {
     res.sendFile(path.join(__dirname, "../client/dist/index.html"));
