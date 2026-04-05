@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, BarRow, TabToggle } from "./UI.jsx";
 import { dhondt } from "./dhondt.js";
 
-export default function PanelResultados({ user, facultades, bancas, results, mesasCargadas, exportURL }) {
+export default function PanelResultados({ user, facultades, consejeros, results, mesasCargadas, exportURL }) {
   const [tipo,  setTipo]  = useState("centro");
   const [vista, setVista] = useState("global");
 
@@ -28,7 +28,7 @@ export default function PanelResultados({ user, facultades, bancas, results, mes
 
   const global      = getGlobal();
   const totalGlobal = global.reduce((a, l) => a + l.votos, 0);
-  const globalSeats = tipo === "consejo" && totalGlobal > 0 ? dhondt(global, bancas) : null;
+  const globalSeats = tipo === "consejo" && totalGlobal > 0 ? dhondt(global, consejeros) : null;
 
   const totalMesasPosibles = facultades.reduce((a, f) => {
     const m = tipo === "centro" ? (f.mesas_centro||0) : (f.mesas_consejo||0);
@@ -44,7 +44,7 @@ export default function PanelResultados({ user, facultades, bancas, results, mes
 
   function SeatBadge({ n }) {
     if (!n) return null;
-    return <span style={{ marginLeft:6, background:"#8e44ad15", color:"#8e44ad", fontSize:11, fontWeight:800, padding:"2px 8px", borderRadius:6 }}>{n} banca{n!==1?"s":""}</span>;
+    return <span style={{ marginLeft:6, background:"#8e44ad15", color:"#8e44ad", fontSize:11, fontWeight:800, padding:"2px 8px", borderRadius:6 }}>{n} consejero{n!==1?"s":""}</span>;
   }
 
   return (
@@ -104,7 +104,7 @@ export default function PanelResultados({ user, facultades, bancas, results, mes
               ))}
               {tipo === "consejo" && globalSeats && (
                 <div style={{ marginTop:18, background:"#8e44ad08", borderRadius:12, padding:14 }}>
-                  <div style={{ fontSize:12, fontWeight:700, color:"#8e44ad", marginBottom:10 }}>⚖️ Distribución D'Hondt — {bancas} bancas</div>
+                  <div style={{ fontSize:12, fontWeight:700, color:"#8e44ad", marginBottom:10 }}>⚖️ Distribución D'Hondt — {consejeros} consejeros</div>
                   <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
                     {global.map((l, i) => globalSeats[i] > 0 && (
                       <div key={l.nombre} style={{ background:l.color+"18", border:`1.5px solid ${l.color}44`, borderRadius:8, padding:"6px 12px", fontSize:12 }}>
@@ -125,7 +125,7 @@ export default function PanelResultados({ user, facultades, bancas, results, mes
           {facultades.map(f => {
             const listas  = getListasConVotos(f.id);
             const total   = listas.reduce((a, l) => a + l.votos, 0);
-            const seats   = tipo === "consejo" && total > 0 ? dhondt(listas, bancas) : null;
+            const seats   = tipo === "consejo" && total > 0 ? dhondt(listas, consejeros) : null;
             const cargadas = mesasCargadas?.[f.id]?.[tipo]?.length || 0;
             const posibles = (tipo==="centro"?(f.mesas_centro||0):(f.mesas_consejo||0)) * 3;
             const blancos = total > 0 ? Object.values(results?.[f.id]?.[tipo]||{}).reduce((a,v)=>a+(v.blancos||0),0) / (listas.length||1) : 0;
