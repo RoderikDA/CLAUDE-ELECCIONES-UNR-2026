@@ -4,9 +4,8 @@ import PanelFiscal    from "./PanelFiscal.jsx";
 import PanelResultados from "./PanelResultados.jsx";
 import PanelAdmin     from "./PanelAdmin.jsx";
 import PanelLog       from "./PanelLog.jsx";
-import PanelAnalisis   from "./PanelAnalisis.jsx";
 import { Header, Footer } from "./UI.jsx";
-import { getFacultades, getResultados, getLog, exportURL as getExportURL } from "./api.js";
+import { getFacultades, getResultados, getLog, exportURL as getExportURL, getVotosPorDia } from "./api.js";
 
 // Tabs por rol
 const TABS_BY_ROL = {
@@ -131,7 +130,7 @@ export default function App() {
         {tab === "fiscal"     && <PanelFiscal user={user} facultades={facultades} bancas={bancas} results={results} mesasCargadas={mesasCargadas} onSaved={fetchAll} />}
         {tab === "resultados" && <PanelResultados user={user} facultades={facultades} bancas={bancas} results={results} mesasCargadas={mesasCargadas} exportURL={exportUrl} />}
         {tab === "log"        && <PanelLog log={log} />}
-        {tab === "analisis"   && <PanelAnalisis facultades={facultades} results={results} mesasCargadas={mesasCargadas} consejeros={bancas} />}
+        {tab === "analisis"   && <PanelAnalisis user={user} facultades={facultades} results={results} mesasCargadas={mesasCargadas} consejeros={bancas} votosPorDia={votosPorDia} />}
         {tab === "admin"      && <PanelAdmin user={user} facultadesIniciales={facultades} bancasIniciales={bancas} exportURL={exportUrl} onConfigSaved={fetchAll} />}
       </div>
 
