@@ -39,6 +39,7 @@ export default function App() {
   const [mesasCargadas, setMesasCargadas] = useState({});
   const [log,     setLog]     = useState([]);
   const [ready,   setReady]   = useState(false);
+  const [votosPorDia,   setVotosPorDia]   = useState({});
   const [error,   setError]   = useState(null);
   const [lastUpdate, setLastUpdate] = useState(null);
 
@@ -57,11 +58,8 @@ export default function App() {
   const fetchAll = useCallback(async () => {
     if (!user) return;
     try {
-      const [facData, resData, logData] = await Promise.all([
-        getFacultades(user.codigo),
-        getResultados(user.codigo),
-        getLog(user.codigo),
-      ]);
+      const [{ data, mesasCargadas: mc }, l, vpd] = await Promise.all([getResultados(user.codigo), getLog(user.codigo), getVotosPorDia(user.codigo)]);
+      setVotosPorDia(vpd || {});
       setFacultades(facData.facultades || []);
       setBancas(parseInt(facData.config?.bancas_dhondt) || 8);
       setResults(resData.data || {});
