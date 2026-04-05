@@ -4,6 +4,7 @@ import PanelFiscal    from "./PanelFiscal.jsx";
 import PanelResultados from "./PanelResultados.jsx";
 import PanelAdmin     from "./PanelAdmin.jsx";
 import PanelLog       from "./PanelLog.jsx";
+import PanelAnalisis   from "./PanelAnalisis.jsx";
 import { Header, Footer } from "./UI.jsx";
 import { getFacultades, getResultados, getLog, exportURL as getExportURL } from "./api.js";
 
