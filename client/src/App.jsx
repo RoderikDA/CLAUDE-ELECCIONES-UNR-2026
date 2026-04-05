@@ -1,14 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
-import Login          from "./Login.jsx";
-import PanelFiscal    from "./PanelFiscal.jsx";
+import Login           from "./Login.jsx";
+import PanelFiscal     from "./PanelFiscal.jsx";
 import PanelResultados from "./PanelResultados.jsx";
-import PanelAdmin     from "./PanelAdmin.jsx";
-import PanelLog       from "./PanelLog.jsx";
+import PanelAdmin      from "./PanelAdmin.jsx";
+import PanelLog        from "./PanelLog.jsx";
 import PanelAnalisis   from "./PanelAnalisis.jsx";
 import { Header, Footer } from "./UI.jsx";
 import { getFacultades, getResultados, getLog, exportURL as getExportURL, getVotosPorDia } from "./api.js";
 
-// Tabs por rol
 const TABS_BY_ROL = {
   admin:   [
     { id:"resultados", icon:"📊", label:"Resultados" },
@@ -29,19 +28,19 @@ const TABS_BY_ROL = {
 };
 
 export default function App() {
-  const [user,    setUser]    = useState(() => {
+  const [user,          setUser]          = useState(() => {
     try { return JSON.parse(sessionStorage.getItem("unr_user")); } catch { return null; }
   });
-  const [tab,     setTab]     = useState("resultados");
-  const [facultades, setFacultades] = useState([]);
-  const [bancas,  setBancas]  = useState(8);
-  const [results, setResults] = useState({});
+  const [tab,           setTab]           = useState("resultados");
+  const [facultades,    setFacultades]    = useState([]);
+  const [bancas,        setBancas]        = useState(8);
+  const [results,       setResults]       = useState({});
   const [mesasCargadas, setMesasCargadas] = useState({});
-  const [log,     setLog]     = useState([]);
-  const [ready,   setReady]   = useState(false);
   const [votosPorDia,   setVotosPorDia]   = useState({});
-  const [error,   setError]   = useState(null);
-  const [lastUpdate, setLastUpdate] = useState(null);
+  const [log,           setLog]           = useState([]);
+  const [ready,         setReady]         = useState(false);
+  const [error,         setError]         = useState(null);
+  const [lastUpdate,    setLastUpdate]    = useState(null);
 
   function handleLogin(u) {
     sessionStorage.setItem("unr_user", JSON.stringify(u));
@@ -58,8 +57,11 @@ export default function App() {
   const fetchAll = useCallback(async () => {
     if (!user) return;
     try {
-      const [{ data, mesasCargadas: mc }, l, vpd] = await Promise.all([getResultados(user.codigo), getLog(user.codigo), getVotosPorDia(user.codigo)]);
-      setVotosPorDia(vpd || {});
+      const [facData, resData, logData] = await Promise.all([
+        getFacultades(user.codigo),
+        getResultados(user.codigo),
+        getLog(user.codigo),
+      ]);
       setFacultades(facData.facultades || []);
       setBancas(parseInt(facData.config?.bancas_dhondt) || 8);
       setResults(resData.data || {});
@@ -67,6 +69,14 @@ export default function App() {
       setLog(logData || []);
       setError(null);
       setLastUpdate(new Date());
+
+      // Votos por día — separado para que no rompa lo demás si falla
+      try {
+        const vpd = await getVotosPorDia(user.codigo);
+        setVotosPorDia(vpd || {});
+      } catch {
+        // silencioso — no bloquea la app
+      }
     } catch (e) {
       setError("Error de conexión con el servidor.");
     }
@@ -88,7 +98,7 @@ export default function App() {
     </div>
   );
 
-  const tabs = TABS_BY_ROL[user.rol] || [];
+  const tabs      = TABS_BY_ROL[user.rol] || [];
   const exportUrl = getExportURL(user.codigo);
 
   return (
@@ -101,7 +111,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Tabs */}
       {tabs.length > 1 && (
         <div style={{ background:"#fff", borderBottom:"1.5px solid #eee", display:"flex" }}>
           {tabs.map(t => (
@@ -124,13 +133,12 @@ export default function App() {
         </div>
       )}
 
-      {/* Content */}
       <div style={{ flex:1, padding:"22px 14px 36px" }}>
-        {tab === "fiscal"     && <PanelFiscal user={user} facultades={facultades} bancas={bancas} results={results} mesasCargadas={mesasCargadas} onSaved={fetchAll} />}
-        {tab === "resultados" && <PanelResultados user={user} facultades={facultades} bancas={bancas} results={results} mesasCargadas={mesasCargadas} exportURL={exportUrl} />}
-        {tab === "log"        && <PanelLog log={log} />}
-        {tab === "analisis"   && <PanelAnalisis user={user} facultades={facultades} results={results} mesasCargadas={mesasCargadas} consejeros={bancas} votosPorDia={votosPorDia} />}
-        {tab === "admin"      && <PanelAdmin user={user} facultadesIniciales={facultades} bancasIniciales={bancas} exportURL={exportUrl} onConfigSaved={fetchAll} />}
+        {tab === "fiscal"     && <PanelFiscal     user={user} facultades={facultades} bancas={bancas} results={results} mesasCargadas={mesasCargadas} onSaved={fetchAll} />}
+        {tab === "resultados" && <PanelResultados  user={user} facultades={facultades} bancas={bancas} results={results} mesasCargadas={mesasCargadas} exportURL={exportUrl} />}
+        {tab === "log"        && <PanelLog         log={log} />}
+        {tab === "analisis"   && <PanelAnalisis    user={user} facultades={facultades} results={results} mesasCargadas={mesasCargadas} consejeros={bancas} votosPorDia={votosPorDia} />}
+        {tab === "admin"      && <PanelAdmin       user={user} facultadesIniciales={facultades} bancasIniciales={bancas} exportURL={exportUrl} onConfigSaved={fetchAll} />}
       </div>
 
       <Footer />
