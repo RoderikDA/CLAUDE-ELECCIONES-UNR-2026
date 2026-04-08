@@ -24,21 +24,22 @@ function calcularImpacto(listas, totalConsejeros, indexObjetivo) {
 
 function calcularDistancias(listas, totalConsejeros) {
   const seats = dhondt(listas, totalConsejeros);
+  // Calculamos distancia al SIGUIENTE consejero siempre,
+  // usando totalConsejeros+1 para simular que hay uno más disponible
+  const seatsExtra = dhondt(listas, totalConsejeros + 1);
+
   return listas.map((l, i) => {
+    // Cuántos votos necesita para ganar el consejero extra
     const cocientesOtros = listas.map((ll, j) =>
-      i === j ? -1 : ll.votos / (seats[j] + 1)
+      i === j ? -1 : ll.votos / (seatsExtra[j] + 1)
     );
     const maxOtro = Math.max(...cocientesOtros);
-    const votosNec = Math.ceil(maxOtro * (seats[i] + 1)) + 1;
+    const votosNec = Math.ceil(maxOtro * (seatsExtra[i] + 1)) + 1;
     const faltan   = Math.max(0, votosNec - l.votos);
-    const victima  = faltan === 0 ? null : calcularImpacto(listas, totalConsejeros, i);
+    // A quién le sacaría ese consejero extra
+    const victima  = calcularImpacto(listas, totalConsejeros + 1, i);
     return { nombre:l.nombre, color:l.color, votos:l.votos, consejeros:seats[i], faltan, victima };
-  }).sort((a, b) => {
-    if (a.faltan === 0 && b.faltan === 0) return 0;
-    if (a.faltan === 0) return 1;
-    if (b.faltan === 0) return -1;
-    return a.faltan - b.faltan;
-  });
+  }).sort((a, b) => a.faltan - b.faltan);
 }
 
 // ── Dona SVG ──────────────────────────────────────────────────────
@@ -331,13 +332,9 @@ function DHondtFacultad({ facultad, results, totalConsejeros }) {
                   </span>
                 </div>
                 <div style={{ textAlign:"right" }}>
-                  {a.faltan===0 ? (
-                    <span style={{ fontSize:12,color:"#16a085",fontWeight:700 }}>✓ Ya lo tiene</span>
-                  ) : (
-                    <span style={{ fontSize:13,fontWeight:800,color:i===0?"#e74c3c":i===1?"#e67e22":"#888" }}>
-                      faltan {a.faltan.toLocaleString()} votos
+  <span style={{ fontSize:13,fontWeight:800,color:i===0?"#e74c3c":i===1?"#e67e22":"#888" }}>
+                      {a.faltan === 0 ? "0 votos" : `faltan ${a.faltan.toLocaleString()} votos`}
                     </span>
-                  )}
                 </div>
               </div>
               {a.faltan>0 && a.victima && (
@@ -350,7 +347,7 @@ function DHondtFacultad({ facultad, results, totalConsejeros }) {
               )}
             </div>
           ))}
-          {conVotos[0]?.faltan>0 && (
+          {conVotos[0] && (
             <div style={{ marginTop:14,background:"#e74c3c10",border:"1px solid #e74c3c33",borderRadius:10,padding:"12px 14px" }}>
               <div style={{ fontSize:13,color:"#1a1a2e" }}>
                 🎯 <strong style={{ color:"#e74c3c" }}>{conVotos[0].nombre}</strong>
