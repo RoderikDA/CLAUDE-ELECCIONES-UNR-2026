@@ -28,8 +28,11 @@ async function initDB() {
     )
   `);
 
-  // Migración: agregar facultad_id si no existe
+  // Migraciones
   await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS facultad_id TEXT DEFAULT NULL`);
+  await pool.query(`ALTER TABLE facultades ADD COLUMN IF NOT EXISTS dias INTEGER DEFAULT 3`);
+
+
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS facultades (
@@ -37,6 +40,7 @@ async function initDB() {
       nombre        TEXT NOT NULL,
       mesas_centro  INTEGER DEFAULT 3,
       mesas_consejo INTEGER DEFAULT 3,
+      dias          INTEGER DEFAULT 3,
       orden         INTEGER DEFAULT 0,
       activa        BOOLEAN DEFAULT TRUE
     )
@@ -139,8 +143,8 @@ async function seedFacultades() {
 
   for (const f of facultades) {
     await pool.query(
-      "INSERT INTO facultades (id,nombre,mesas_centro,mesas_consejo,orden,activa) VALUES ($1,$2,$3,$4,$5,TRUE) ON CONFLICT DO NOTHING",
-      [f.id, f.nombre, f.mc, f.mcd, f.orden]
+      "INSERT INTO facultades (id,nombre,mesas_centro,mesas_consejo,dias,orden,activa) VALUES ($1,$2,$3,$4,$5,$6,TRUE) ON CONFLICT DO NOTHING",
+      [f.id, f.nombre, f.mc, f.mcd, 3, f.orden]
     );
     for (let i = 0; i < f.listas.length; i++) {
       const [nombre, color] = f.listas[i];
@@ -230,10 +234,10 @@ app.post("/api/admin/config", async (req, res) => {
       }
       for (const f of facultades) {
         await client.query(`
-          INSERT INTO facultades (id,nombre,mesas_centro,mesas_consejo,orden,activa)
-          VALUES ($1,$2,$3,$4,$5,TRUE)
-          ON CONFLICT(id) DO UPDATE SET nombre=$2,mesas_centro=$3,mesas_consejo=$4,orden=$5,activa=TRUE
-        `, [f.id, f.nombre, f.mesas_centro||3, f.mesas_consejo||3, f.orden||0]);
+          INSERT INTO facultades (id,nombre,mesas_centro,mesas_consejo,dias,orden,activa)
+          VALUES ($1,$2,$3,$4,$5,$6,TRUE)
+          ON CONFLICT(id) DO UPDATE SET nombre=$2,mesas_centro=$3,mesas_consejo=$4,dias=$5,orden=$6,activa=TRUE
+        `, [f.id, f.nombre, f.mesas_centro||3, f.mesas_consejo||3, f.dias||3, f.orden||0]);
         await client.query("DELETE FROM listas WHERE facultad_id=$1", [f.id]);
         for (let i=0; i<(f.listas||[]).length; i++) {
           const l = f.listas[i];
