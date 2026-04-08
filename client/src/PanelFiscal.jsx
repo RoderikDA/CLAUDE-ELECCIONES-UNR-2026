@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Btn, Toast } from "./UI.jsx";
 import { postResultados } from "./api.js";
 
-const DIAS = [1, 2, 3];
+// DIAS se genera dinámicamente desde fac.dias
 
 export default function PanelFiscal({ user, facultades, consejeros, results, mesasCargadas, onSaved }) {
   const [step, setStep]             = useState("facultad");
@@ -135,8 +135,8 @@ export default function PanelFiscal({ user, facultades, consejeros, results, mes
           <p style={{ color:"#999", fontSize:13, margin:"0 0 22px" }}>¿Qué elección querés cargar?</p>
           <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
             {[
-              { id:"centro",  label:"Centro de Estudiantes", icon:"🎓", color:"#2980b9", mesas: fac.mesas_centro||0 },
-              { id:"consejo", label:"Consejo Directivo",     icon:"⚖️", color:"#8e44ad", mesas: fac.mesas_consejo||0 },
+              { id:"centro",  label:"Centro de Estudiantes", icon:"🎓", color:"#2980b9", mesas: fac.mesas_centro||0, dias: fac.dias||3 },
+              { id:"consejo", label:"Consejo Directivo",     icon:"⚖️", color:"#8e44ad", mesas: fac.mesas_consejo||0, dias: fac.dias||3 },
             ].map(op => {
               const cargadas = mesasCargadas?.[facultadId]?.[op.id]?.length || 0;
               const total    = op.mesas * 3;
@@ -163,7 +163,7 @@ export default function PanelFiscal({ user, facultades, consejeros, results, mes
           <BackBtn /><Crumb />
           <h2 style={{ margin:"0 0 22px", fontSize:20, color:"#1a1a2e" }}>Seleccioná el día</h2>
           <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-            {DIAS.map(d => {
+            {Array.from({ length: fac.dias || 3 }, (_, i) => i + 1).map(d => {
               const mesasDelDia = mesasCargadas?.[facultadId]?.[tipo]?.filter(x => x.dia === d) ?? [];
               const total = tipo === "centro" ? (fac.mesas_centro||0) : (fac.mesas_consejo||0);
               return (
