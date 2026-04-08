@@ -246,7 +246,7 @@ function VistaPorDia({ facultades, results, votosPorDia }) {
 
             {/* Resumen por día */}
             <div style={{ marginTop:14, display:"flex", gap:10, flexWrap:"wrap" }}>
-              {[1,2,3].map(d => {
+              {Array.from({ length: f.dias || 3 }, (_, i) => i + 1).map(d => {
                 const totalDia = f.listas.reduce((a, l) =>
                   a + (votosPorDia?.[f.id]?.[tipo]?.[d]?.[l.id]?.votos || 0), 0
                 );
