@@ -24,20 +24,22 @@ function calcularImpacto(listas, totalConsejeros, indexObjetivo) {
 
 function calcularDistancias(listas, totalConsejeros) {
   const seats = dhondt(listas, totalConsejeros);
-  // Calculamos distancia al SIGUIENTE consejero siempre,
-  // usando totalConsejeros+1 para simular que hay uno más disponible
-  const seatsExtra = dhondt(listas, totalConsejeros + 1);
 
   return listas.map((l, i) => {
-    // Cuántos votos necesita para ganar el consejero extra
-    const cocientesOtros = listas.map((ll, j) =>
-      i === j ? -1 : ll.votos / (seatsExtra[j] + 1)
-    );
-    const maxOtro = Math.max(...cocientesOtros);
-    const votosNec = Math.ceil(maxOtro * (seatsExtra[i] + 1)) + 1;
-    const faltan   = Math.max(0, votosNec - l.votos);
-    // A quién le sacaría ese consejero extra
-    const victima  = calcularImpacto(listas, totalConsejeros + 1, i);
+    // Búsqueda directa: cuántos votos extra necesita lista i
+    // para que el reparto de totalConsejeros cambie a su favor
+    let faltan = 0;
+    for (let extra = 0; extra <= 10000; extra++) {
+      const listasTest = listas.map((ll, j) => ({
+        ...ll, votos: j === i ? ll.votos + extra : ll.votos,
+      }));
+      const seatsTest = dhondt(listasTest, totalConsejeros);
+      if (seatsTest[i] > seats[i]) {
+        faltan = extra;
+        break;
+      }
+    }
+    const victima = faltan === 0 ? null : calcularImpacto(listas, totalConsejeros, i);
     return { nombre:l.nombre, color:l.color, votos:l.votos, consejeros:seats[i], faltan, victima };
   }).sort((a, b) => a.faltan - b.faltan);
 }
