@@ -4,7 +4,7 @@ import { getUsuarios, crearUsuario, toggleUsuario, eliminarUsuario, guardarConfi
 
 const COLORS = ["#e74c3c","#2980b9","#27ae60","#8e44ad","#e67e22","#1abc9c","#c0392b","#16a085","#f39c12","#2c3e50"];
 
-export default function PanelAdmin({ user, facultadesIniciales, consejerosIniciales, exportURL, onConfigSaved }) {
+export default function PanelAdmin({ user, facultadesIniciales, bancasIniciales, exportURL, onConfigSaved }) {
   const [seccion, setSeccion] = useState("usuarios");
   return (
     <div style={{ maxWidth:600, margin:"0 auto" }}>
@@ -19,23 +19,22 @@ export default function PanelAdmin({ user, facultadesIniciales, consejerosInicia
         ))}
       </div>
       {seccion==="usuarios" && <GestionUsuarios user={user} facultades={facultadesIniciales} />}
-      {seccion==="config"   && <GestionConfig user={user} facultadesIniciales={facultadesIniciales} consejerosIniciales={consejerosIniciales} onSaved={onConfigSaved} />}
+      {seccion==="config"   && <GestionConfig user={user} facultadesIniciales={facultadesIniciales} bancasIniciales={bancasIniciales} onSaved={onConfigSaved} />}
       {seccion==="datos"    && <GestionDatos user={user} exportURL={exportURL} />}
     </div>
   );
 }
 
 function GestionUsuarios({ user, facultades }) {
-  const [usuarios, setUsuarios] = useState([]);
-  const [nombre,   setNombre]   = useState("");
-  const [rol,      setRol]      = useState("fiscal");
-  const [facId,    setFacId]    = useState("");
-  const [loading,  setLoading]  = useState(false);
-  const [toast,    setToast]    = useState(null);
+  const [usuarios,  setUsuarios]  = useState([]);
+  const [nombre,    setNombre]    = useState("");
+  const [rol,       setRol]       = useState("fiscal");
+  const [facId,     setFacId]     = useState("");
+  const [loading,   setLoading]   = useState(false);
+  const [toast,     setToast]     = useState(null);
   const [filtroRol, setFiltroRol] = useState("todos");
 
   function showToast(msg, ok=true) { setToast({msg,ok}); setTimeout(()=>setToast(null),3000); }
-
   useEffect(()=>{ fetchUsuarios(); },[]);
 
   async function fetchUsuarios() {
@@ -59,13 +58,11 @@ function GestionUsuarios({ user, facultades }) {
   async function eliminar(id) { await eliminarUsuario(user.codigo, id); fetchUsuarios(); }
 
   const rolColor = { admin:"#8e44ad", fiscal:"#16a085", publico:"#2980b9" };
-
   const usuariosFiltrados = usuarios.filter(u => {
     if (u.rol === "admin") return false;
     if (filtroRol === "todos") return true;
     return u.rol === filtroRol;
   });
-
   const activos   = usuariosFiltrados.filter(u => u.activo);
   const inactivos = usuariosFiltrados.filter(u => !u.activo);
 
@@ -76,15 +73,13 @@ function GestionUsuarios({ user, facultades }) {
         <h3 style={{ margin:"0 0 16px", fontSize:16, color:"#1a1a2e" }}>Crear nuevo usuario</h3>
         <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
           <input value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Nombre y apellido"
-            style={{ padding:"10px 12px", border:"2px solid #eee", borderRadius:8, fontSize:14, fontFamily:"inherit", outline:"none" }}
-          />
+            style={{ padding:"10px 12px", border:"2px solid #eee", borderRadius:8, fontSize:14, fontFamily:"inherit", outline:"none" }} />
           <select value={rol} onChange={e=>{ setRol(e.target.value); setFacId(""); }}
             style={{ padding:"10px 12px", border:"2px solid #eee", borderRadius:8, fontSize:14, fontFamily:"inherit", outline:"none", background:"#fff" }}>
             <option value="fiscal">Fiscal</option>
             <option value="publico">Público (visualizador)</option>
             <option value="admin">Admin</option>
           </select>
-
           {rol === "fiscal" && (
             <select value={facId} onChange={e=>setFacId(e.target.value)}
               style={{ padding:"10px 12px", border:`2px solid ${facId?"#16a085":"#e74c3c"}`, borderRadius:8, fontSize:14, fontFamily:"inherit", outline:"none", background:"#fff" }}>
@@ -94,14 +89,12 @@ function GestionUsuarios({ user, facultades }) {
               ))}
             </select>
           )}
-
           <Btn onClick={crear} variant="success" disabled={loading||!nombre.trim()} style={{ width:"100%" }}>
             {loading ? "Creando…" : "Generar código de acceso"}
           </Btn>
         </div>
       </Card>
 
-      {/* Filtro */}
       <div style={{ display:"flex", gap:6, marginBottom:14 }}>
         {[["todos","Todos"],["fiscal","Fiscales"],["publico","Públicos"]].map(([v,label])=>(
           <button key={v} onClick={()=>setFiltroRol(v)} style={{
@@ -165,24 +158,24 @@ function GestionUsuarios({ user, facultades }) {
   );
 }
 
-function GestionConfig({ user, facultadesIniciales, consejerosIniciales, onSaved }) {
+function GestionConfig({ user, facultadesIniciales, bancasIniciales, onSaved }) {
   const [draft,  setDraft]  = useState(()=>JSON.parse(JSON.stringify(facultadesIniciales||[])));
-  const [consejeros, setBancas] = useState(consejerosIniciales||8);
+  const [bancas, setBancas] = useState(bancasIniciales||8);
   const [saving, setSaving] = useState(false);
   const [toast,  setToast]  = useState(null);
 
   function showToast(msg,ok=true){ setToast({msg,ok}); setTimeout(()=>setToast(null),3000); }
 
-  const addFac = ()=>setDraft([...draft,{id:"f"+Date.now(),nombre:"",mesas_centro:3,mesas_consejo:3,listas:[],orden:draft.length}]);
-  const delFac = fid=>setDraft(draft.filter(f=>f.id!==fid));
-  const updFac = (fid,k,v)=>setDraft(draft.map(f=>f.id===fid?{...f,[k]:v}:f));
-  const addLista = fid=>setDraft(draft.map(f=>f.id===fid?{...f,listas:[...f.listas,{id:"l"+Date.now(),nombre:"",color:COLORS[f.listas.length%COLORS.length],orden:f.listas.length}]}:f));
-  const delLista = (fid,lid)=>setDraft(draft.map(f=>f.id===fid?{...f,listas:f.listas.filter(l=>l.id!==lid)}:f));
-  const updLista = (fid,lid,k,v)=>setDraft(draft.map(f=>f.id===fid?{...f,listas:f.listas.map(l=>l.id===lid?{...l,[k]:v}:l)}:f));
+  const addFac   = () => setDraft([...draft, { id:"f"+Date.now(), nombre:"", mesas_centro:3, mesas_consejo:3, dias:3, listas:[], orden:draft.length }]);
+  const delFac   = fid => setDraft(draft.filter(f=>f.id!==fid));
+  const updFac   = (fid,k,v) => setDraft(draft.map(f=>f.id===fid?{...f,[k]:v}:f));
+  const addLista = fid => setDraft(draft.map(f=>f.id===fid?{...f,listas:[...f.listas,{id:"l"+Date.now(),nombre:"",color:COLORS[f.listas.length%COLORS.length],orden:f.listas.length}]}:f));
+  const delLista = (fid,lid) => setDraft(draft.map(f=>f.id===fid?{...f,listas:f.listas.filter(l=>l.id!==lid)}:f));
+  const updLista = (fid,lid,k,v) => setDraft(draft.map(f=>f.id===fid?{...f,listas:f.listas.map(l=>l.id===lid?{...l,[k]:v}:l)}:f));
 
   async function guardar(){
     setSaving(true);
-    try { await guardarConfig(user.codigo,{facultades:draft,consejeros}); showToast("✓ Configuración guardada"); onSaved(); }
+    try { await guardarConfig(user.codigo,{facultades:draft,bancas}); showToast("✓ Configuración guardada"); onSaved(); }
     catch(e){ showToast("❌ "+e.message,false); }
     finally{ setSaving(false); }
   }
@@ -195,7 +188,7 @@ function GestionConfig({ user, facultadesIniciales, consejerosIniciales, onSaved
       </div>
       <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:18,background:"#fff",borderRadius:12,padding:"14px 16px",boxShadow:"0 1px 8px #0001" }}>
         <span style={{ fontSize:14,fontWeight:700,color:"#1a1a2e",flex:1 }}>Consejeros — Consejo Directivo</span>
-        <input type="number" min="1" max="50" value={consejeros} onChange={e=>setBancas(parseInt(e.target.value)||8)}
+        <input type="number" min="1" max="50" value={bancas} onChange={e=>setBancas(parseInt(e.target.value)||8)}
           style={{ width:64,padding:"7px 10px",border:"2px solid #eee",borderRadius:8,fontSize:16,fontWeight:800,fontFamily:"inherit",outline:"none",textAlign:"center",color:"#8e44ad" }} />
       </div>
       <div style={{ display:"flex",flexDirection:"column",gap:14,marginBottom:18 }}>
@@ -206,15 +199,28 @@ function GestionConfig({ user, facultadesIniciales, consejerosIniciales, onSaved
                 style={{ flex:1,padding:"7px 10px",border:"2px solid #eee",borderRadius:8,fontSize:14,fontWeight:700,fontFamily:"inherit",outline:"none" }} />
               <Btn sm variant="danger" onClick={()=>delFac(f.id)}>✕</Btn>
             </div>
-            <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10 }}>
-              {["centro","consejo"].map(t=>(
-                <div key={t}>
-                  <div style={{ fontSize:11,color:"#aaa",marginBottom:4 }}>Mesas {t==="centro"?"CE":"CD"}</div>
-                  <input type="number" min="0" value={f[`mesas_${t}`]||0} onChange={e=>updFac(f.id,`mesas_${t}`,parseInt(e.target.value)||0)}
-                    style={{ width:"100%",padding:"6px 8px",border:"1.5px solid #eee",borderRadius:7,fontSize:13,fontFamily:"inherit",outline:"none",boxSizing:"border-box" }} />
-                </div>
-              ))}
+
+            {/* Mesas CE, Mesas CD, Días */}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:12 }}>
+              <div>
+                <div style={{ fontSize:11,color:"#aaa",marginBottom:4 }}>Mesas CE</div>
+                <input type="number" min="0" value={f.mesas_centro||0} onChange={e=>updFac(f.id,"mesas_centro",parseInt(e.target.value)||0)}
+                  style={{ width:"100%",padding:"6px 8px",border:"1.5px solid #eee",borderRadius:7,fontSize:13,fontFamily:"inherit",outline:"none",boxSizing:"border-box" }} />
+              </div>
+              <div>
+                <div style={{ fontSize:11,color:"#aaa",marginBottom:4 }}>Mesas CD</div>
+                <input type="number" min="0" value={f.mesas_consejo||0} onChange={e=>updFac(f.id,"mesas_consejo",parseInt(e.target.value)||0)}
+                  style={{ width:"100%",padding:"6px 8px",border:"1.5px solid #eee",borderRadius:7,fontSize:13,fontFamily:"inherit",outline:"none",boxSizing:"border-box" }} />
+              </div>
+              <div>
+                <div style={{ fontSize:11,color:"#aaa",marginBottom:4 }}>Días</div>
+                <select value={f.dias||3} onChange={e=>updFac(f.id,"dias",parseInt(e.target.value))}
+                  style={{ width:"100%",padding:"6px 8px",border:"1.5px solid #eee",borderRadius:7,fontSize:13,fontFamily:"inherit",outline:"none",boxSizing:"border-box",background:"#fff" }}>
+                  {[1,2,3,4].map(d=><option key={d} value={d}>{d} día{d!==1?"s":""}</option>)}
+                </select>
+              </div>
             </div>
+
             <div style={{ display:"flex",flexDirection:"column",gap:7,marginBottom:10 }}>
               {f.listas.map(l=>(
                 <div key={l.id} style={{ display:"flex",gap:8,alignItems:"center" }}>
