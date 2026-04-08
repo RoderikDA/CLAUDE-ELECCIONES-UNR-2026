@@ -135,7 +135,7 @@ export default function App() {
 
       <div style={{ flex:1, padding:"22px 14px 36px" }}>
         {tab === "fiscal"     && <PanelFiscal     user={user} facultades={facultades} bancas={bancas} results={results} mesasCargadas={mesasCargadas} onSaved={fetchAll} />}
-        {tab === "resultados" && <PanelResultados  user={user} facultades={facultades} bancas={bancas} results={results} mesasCargadas={mesasCargadas} exportURL={exportUrl} />}
+        {tab === "resultados" && <PanelResultados  user={user} facultades={facultades} consejeros={bancas} results={results} mesasCargadas={mesasCargadas} exportURL={exportUrl} />}
         {tab === "log"        && <PanelLog         log={log} />}
         {tab === "analisis"   && <PanelAnalisis    user={user} facultades={facultades} results={results} mesasCargadas={mesasCargadas} consejeros={bancas} votosPorDia={votosPorDia} />}
         {tab === "admin"      && <PanelAdmin       user={user} facultadesIniciales={facultades} bancasIniciales={bancas} exportURL={exportUrl} onConfigSaved={fetchAll} />}
